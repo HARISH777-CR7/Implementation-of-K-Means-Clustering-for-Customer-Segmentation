@@ -8,77 +8,164 @@ To write a program to implement the K Means Clustering for Customer Segmentation
 2. Anaconda – Python 3.7 Installation / Jupyter notebook
 
 ## Algorithm
-1.Initialize K cluster centroids randomly from the dataset.
 
-2.Assign each customer to the nearest centroid based on distance (e.g., Euclidean).
-
-3.Recalculate centroids as the mean of all assigned points in each cluster.
-
-4.Repeat assignment and centroid update until centroids do not change.
-
-5.Output final clusters representing customer segments. 
-
+1. Import required libraries
+2. Load the dataset (Mall_Customers.csv)
+3. Check dataset info,Check for missing values
+4. Select features: Annual Income and Spending Score
+5. Standardize the selected features
+6. Apply Elbow method for k = 1 to 10 and Plot
+7. Apply Silhouette Score for k = 2 to 10 and Plot 
+8. Fit K-Means model
+9. Predict cluster labels and add cluster labels to the dataset
+10.Compute cluster centers
+11. Visualize clusters using scatter plot
 ## Program:
 ```python
 /*
 Program to implement the K Means Clustering for Customer Segmentation.
 Developed by: HARISH K
-RegisterNumber:  212225230094
+RegisterNumber: 212225230094
 */
+
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import silhouette_score
+import warnings
+warnings.filterwarnings("ignore")
 
-data = pd.read_csv(r"C:\Users\asus\Downloads\CustomerData.csv")
+# ---------------------------------------
+# 1. Load the dataset
+# ---------------------------------------
+df = pd.read_csv("Mall_Customers.csv")  # UPDATE PATH IF NEEDED
+print("Dataset Loaded Successfully!")
+print("Shape:", df.shape)
+display(df.head())
 
-print(data.head())
-print(data.columns)
+# ---------------------------------------
+# 2. Check info and missing values
+# ---------------------------------------
+print("\nDataset Info:")
+display(df.info())
+print("\nMissing Values:")
+display(df.isnull().sum())
 
-features = ['Age', 'Annual Income (k$)', 'Spending Score (1-100)']
-X = data[features]
+# ---------------------------------------
+# 3. Select features for clustering
+# Using Income & Spending Score
+# ---------------------------------------
+features = ["Annual Income (k$)", "Spending Score (1-100)"]
+X = df[features]
 
+print("\nFeatures Used:", features)
+
+# ---------------------------------------
+# 4. Standardize the data
+# ---------------------------------------
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 
-inertia_values = []
-for i in range(1, 11):
-    kmeans = KMeans(n_clusters=i, random_state=42, n_init=10)  # Explicit n_init to suppress warning
-    kmeans.fit(X_scaled)
-    inertia_values.append(kmeans.inertia_)
-    
-plt.figure(figsize=(8, 4))
-plt.plot(range(1, 11), inertia_values, marker='o', linestyle='-')
-plt.xlabel('Number of Clusters')
-plt.ylabel('Inertia')
-plt.title('Elbow Method for Optimal Number of Clusters')
+# ---------------------------------------
+# 5. Elbow Method to choose k
+# ---------------------------------------
+inertia = []
+K_range = range(1, 11)
+
+for k in K_range:
+    km = KMeans(n_clusters=k, random_state=42)
+    km.fit(X_scaled)
+    inertia.append(km.inertia_)
+
+plt.figure(figsize=(6,4))
+plt.plot(K_range, inertia, marker='o')
+plt.xlabel("Number of Clusters (k)")
+plt.ylabel("Inertia / SSE")
+plt.title("Elbow Method")
+plt.grid(True)
 plt.show()
 
-optimal_clusters = 4
-kmeans = KMeans(n_clusters=optimal_clusters, random_state=42, n_init=10)  # Explicit n_init
-kmeans.fit(X_scaled)
+# ---------------------------------------
+# 6. Silhouette Scores
+# ---------------------------------------
+sil_scores = []
+for k in range(2, 11):
+    km = KMeans(n_clusters=k, random_state=42)
+    labels = km.fit_predict(X_scaled)
+    sil_scores.append(silhouette_score(X_scaled, labels))
 
-data['Cluster'] = kmeans.labels_
-
-sil_score = silhouette_score(X_scaled, kmeans.labels_)
-print(f'Silhouette Score: {sil_score}')
-
-
-plt.figure(figsize=(10, 6))
-sns.scatterplot(data=data,x='Annual Income (k$)',y='Spending Score (1-100)',hue='Cluster', palette='viridis',s=100,alpha=0.7)
-plt.title('Customer Segmentation based on Annual Income and Spending Score')
-plt.xlabel('Annual Income (k$)')
-plt.ylabel('Spending Score (1-100)')
-plt.legend(title='Cluster')
+plt.figure(figsize=(6,4))
+plt.plot(range(2, 11), sil_scores, marker='o', color="orange")
+plt.xlabel("Number of Clusters (k)")
+plt.ylabel("Silhouette Score")
+plt.title("Silhouette Method")
+plt.grid(True)
 plt.show()
+
+# ---------------------------------------
+# 7. Apply KMeans (Choose k=5 by elbow)
+# ---------------------------------------
+k_final = 5
+kmeans = KMeans(n_clusters=k_final, random_state=42)
+cluster_labels = kmeans.fit_predict(X_scaled)
+
+df["Cluster"] = cluster_labels
+print("\nCluster Counts:")
+print(df["Cluster"].value_counts())
+
+# ---------------------------------------
+# 8. Cluster Centers in original units
+# ---------------------------------------
+centers_scaled = kmeans.cluster_centers_
+centers_original = scaler.inverse_transform(centers_scaled)
+
+centers_df = pd.DataFrame(centers_original, columns=features)
+centers_df["Cluster"] = range(k_final)
+
+print("\nCluster Centers (Original Values):")
+display(centers_df.round(2))
+
+# ---------------------------------------
+# 9. Visualization of Clusters
+# ---------------------------------------
+plt.figure(figsize=(8,6))
+sns.scatterplot(
+    data=df,
+    x="Annual Income (k$)",
+    y="Spending Score (1-100)",
+    hue="Cluster",
+    palette="tab10",
+    s=70
+)
+
+# Show cluster centers
+plt.scatter(
+    centers_df["Annual Income (k$)"],
+    centers_df["Spending Score (1-100)"],
+    s=250,
+    c="black",
+    marker="X",
+    label="Centroids"
+)
+
+plt.title("Customer Segmentation using K-Means (k=5)")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+
+
 ```
 
 ## Output:
-<img width="683" height="178" alt="image" src="https://github.com/user-attachments/assets/db309568-4f78-4f91-a764-4cc83e2fb484" />
-<img width="801" height="428" alt="image" src="https://github.com/user-attachments/assets/be90c069-8e20-42f9-a7a6-312a871ee063" />
-<img width="922" height="568" alt="image" src="https://github.com/user-attachments/assets/8f4abc62-12af-4b7c-9405-f075cf6ce933" />
+<img width="977" height="983" alt="Screenshot 2026-08-22 114809" src="https://github.com/user-attachments/assets/b48e620e-356e-44d1-bd7d-25dd12046cf6" />
+<img width="768" height="488" alt="Screenshot 2026-08-22 114831" src="https://github.com/user-attachments/assets/a8f2c87c-6d29-4648-8d7c-a2fe7d4a522c" />
+<img width="677" height="486" alt="Screenshot 2026-08-22 114901" src="https://github.com/user-attachments/assets/8b75e088-1770-43f8-a94e-52ada1637895" />
+<img width="725" height="465" alt="Screenshot 2026-08-22 114908" src="https://github.com/user-attachments/assets/c5814d49-b776-41d4-94de-a9df4ba8a01d" />
+<img width="914" height="709" alt="Screenshot 2026-08-22 114923" src="https://github.com/user-attachments/assets/5cf5cd3b-d075-4829-af7c-06e5e0662d54" />
 
 
 ## Result:
